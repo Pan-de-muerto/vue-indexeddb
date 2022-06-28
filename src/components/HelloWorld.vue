@@ -1,46 +1,74 @@
 <template>
   <div class="hello">
-    <h1>{{ msg }}</h1>
-    <p>
-      For a guide and recipes on how to configure / customize this project,<br>
-      check out the
-      <a href="https://cli.vuejs.org" target="_blank" rel="noopener">vue-cli documentation</a>.
-    </p>
-    <h3>Installed CLI Plugins</h3>
-    <ul>
-      <li><a href="https://github.com/vuejs/vue-cli/tree/dev/packages/%40vue/cli-plugin-babel" target="_blank" rel="noopener">babel</a></li>
-      <li><a href="https://github.com/vuejs/vue-cli/tree/dev/packages/%40vue/cli-plugin-eslint" target="_blank" rel="noopener">eslint</a></li>
-    </ul>
-    <h3>Essential Links</h3>
-    <ul>
-      <li><a href="https://vuejs.org" target="_blank" rel="noopener">Core Docs</a></li>
-      <li><a href="https://forum.vuejs.org" target="_blank" rel="noopener">Forum</a></li>
-      <li><a href="https://chat.vuejs.org" target="_blank" rel="noopener">Community Chat</a></li>
-      <li><a href="https://twitter.com/vuejs" target="_blank" rel="noopener">Twitter</a></li>
-      <li><a href="https://news.vuejs.org" target="_blank" rel="noopener">News</a></li>
-    </ul>
-    <h3>Ecosystem</h3>
-    <ul>
-      <li><a href="https://router.vuejs.org" target="_blank" rel="noopener">vue-router</a></li>
-      <li><a href="https://vuex.vuejs.org" target="_blank" rel="noopener">vuex</a></li>
-      <li><a href="https://github.com/vuejs/vue-devtools#vue-devtools" target="_blank" rel="noopener">vue-devtools</a></li>
-      <li><a href="https://vue-loader.vuejs.org" target="_blank" rel="noopener">vue-loader</a></li>
-      <li><a href="https://github.com/vuejs/awesome-vue" target="_blank" rel="noopener">awesome-vue</a></li>
-    </ul>
+    <h1>client-side DB</h1>
+    <div class="form-container">
+      <input v-model="name" type="text" placeholder="nombre" />
+      <input v-model="email" type="text" placeholder="correo" />
+      <button @click="addUser">Enviar</button>
+    </div>
+    <pre class="preview">{{ JSON.stringify(pending, null, 2) }}</pre>
   </div>
 </template>
 
-<script>
+<script >
+import { ref, onMounted } from "vue";
+import PouchDB from "pouchdb";
+
 export default {
-  name: 'HelloWorld',
-  props: {
-    msg: String
-  }
-}
+  setup() {
+    const db = new PouchDB("pending_requests");
+    const name = ref("");
+    const email = ref("");
+    const pending = ref([]);
+
+    async function addUser() {
+      const newRequest = {
+        method: "post",
+        payload: { name: name.value, email: email.value },
+      };
+      console.log(newRequest);
+
+      try {
+        let res = await db.post(newRequest);
+        console.log(res);
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    onMounted(async () => {
+
+      let res = await db.allDocs({include_docs: true, descending: true});
+      console.log(res.rows.map(x => x.doc));
+
+    });
+
+    return {
+      name,
+      email,
+      pending,
+      addUser,
+    };
+  },
+};
 </script>
 
 <!-- Add "scoped" attribute to limit CSS to this component only -->
 <style scoped>
+.preview {
+  text-align: start;
+}
+.form-container {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  height: 80px;
+  max-width: 400px;
+  margin: auto;
+}
+.form-container > input {
+  text-align: center;
+}
 h3 {
   margin: 40px 0 0;
 }
