@@ -25,7 +25,8 @@
       <div>
         <h4>Pending Requests</h4>
         <pre class="preview">{{ JSON.stringify(pending, null, 2) }}</pre>
-        <button @click="handleSync">Sync</button>
+        <button class="temp-btn" @click="handleFlushQueue">Clear</button>
+        <button class="temp-btn" @click="handleSync">Sync</button>
       </div>
     </div>
   </div>
@@ -33,48 +34,50 @@
 
 <script >
 import { ref, onMounted } from "vue";
-import PouchDB from "pouchdb";
+import {useObservable} from '@vueuse/rxjs';
+import {db} from '../utilities/db';
 import axios from "axios";
+import { liveQuery } from 'dexie';
 export default {
   setup() {
-    const db = new PouchDB("pending_requests");
     const name = ref("");
     const email = ref("");
-    const pending = ref([]);
-    const users = ref([]);
+    //const pending = ref([]);
+    // const users = ref([]);
 
     async function addUser() {
       const newRequest = {
         method: "post",
         payload: { name: name.value, email: email.value },
       };
-
       try {
-        let res = await db.post(newRequest);
-        console.log(res);
-      } catch (err) {
-        console.error(err);
+        const id = await db.requests.add(newRequest)
+        console.log(id);
+      } catch (error) {
+        console.error(error);
       }
+
+     // add request to queue
     }
 
     async function deleteUser(userId) {
-      console.log(userId);
       const newRequest = {
         method: "delete",
         userId: userId,
       };
-
+      
       try {
-        let res = await db.post(newRequest);
-        console.log(res);
-      } catch (err) {
-        console.error(err);
+        await db.requests.add(newRequest)
+      } catch (error) {
+        console.error(error);
       }
+
     }
 
     async function handleSync(){
       let promises = [];
-      pending.value.forEach(element => {
+      console.log(this.pending);
+      this.pending.forEach(element => {
         switch (element.method){
           case 'post':
             promises.push(axios.post("https://62b9d16eff109cd1dc9bd9a9.mockapi.io/users" , element.payload)); break;
@@ -85,37 +88,43 @@ export default {
       Promise.all(promises).then(responses => console.log(responses));
     }
 
+    function handleFlushQueue() {
+      db.requests.clear();
+      document.location.reload()
+    }
+
 
     onMounted(async () => {
-      let res = await db.allDocs({ include_docs: true, descending: true });
-      pending.value = res.rows.map((x) => ({
-        method: x.doc.method,
-        payload: x.doc.payload,
-        userId: x.doc.userId,
-      }));
-
       let usrs = await axios.get(
         "https://62b9d16eff109cd1dc9bd9a9.mockapi.io/users"
       );
-
-      users.value = usrs.data;
+      db.users.clear();
+      db.users.bulkAdd(usrs.data);
+      // users.value = usrs.data;
     });
 
     return {
       name,
       email,
-      pending,
-      users,
+      users: useObservable(
+        liveQuery(() => db.users.toArray())
+      ),
+      pending : useObservable(
+        liveQuery(()=>db.requests.toArray())
+      ),
       addUser,
       deleteUser,
       handleSync,
+      handleFlushQueue,
     };
   },
 };
 </script>
 
-<!-- Add "scoped" attribute to limit CSS to this component only -->
 <style scoped>
+.temp-btn{
+  margin : 0 5px;
+}
 .emoji-btn {
   font-size: 20px;
   margin: 0 10px;
