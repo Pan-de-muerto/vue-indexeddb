@@ -34,10 +34,10 @@
 
 <script >
 import { ref, onMounted } from "vue";
-import {useObservable} from '@vueuse/rxjs';
-import {db} from '../utilities/db';
+import { useObservable } from "@vueuse/rxjs";
+import { db } from "../utilities/db";
 import axios from "axios";
-import { liveQuery } from 'dexie';
+import { liveQuery } from "dexie";
 export default {
   setup() {
     const name = ref("");
@@ -51,13 +51,13 @@ export default {
         payload: { name: name.value, email: email.value },
       };
       try {
-        const id = await db.requests.add(newRequest)
+        const id = await db.requests.add(newRequest);
         console.log(id);
       } catch (error) {
         console.error(error);
       }
 
-     // add request to queue
+      // add request to queue
     }
 
     async function deleteUser(userId) {
@@ -65,53 +65,63 @@ export default {
         method: "delete",
         userId: userId,
       };
-      
+
       try {
-        await db.requests.add(newRequest)
+        await db.requests.add(newRequest);
       } catch (error) {
         console.error(error);
       }
-
     }
 
-    async function handleSync(){
+    async function handleSync() {
       let promises = [];
       console.log(this.pending);
-      this.pending.forEach(element => {
-        switch (element.method){
-          case 'post':
-            promises.push(axios.post("https://62b9d16eff109cd1dc9bd9a9.mockapi.io/users" , element.payload)); break;
-          case 'delete':
-            promises.push(axios.delete(`https://62b9d16eff109cd1dc9bd9a9.mockapi.io/users/${element.userId}`)); break;
+      this.pending.forEach((element) => {
+        switch (element.method) {
+          case "post":
+            promises.push(
+              axios.post(
+                "https://62b9d16eff109cd1dc9bd9a9.mockapi.io/users",
+                element.payload
+              )
+            );
+            break;
+          case "delete":
+            promises.push(
+              axios.delete(
+                `https://62b9d16eff109cd1dc9bd9a9.mockapi.io/users/${element.userId}`
+              )
+            );
+            break;
         }
       });
-      Promise.all(promises).then(responses => console.log(responses));
+      Promise.all(promises).then((responses) => console.log(responses));
     }
 
     function handleFlushQueue() {
       db.requests.clear();
-      document.location.reload()
+      document.location.reload();
     }
 
-
     onMounted(async () => {
-      let usrs = await axios.get(
-        "https://62b9d16eff109cd1dc9bd9a9.mockapi.io/users"
-      );
-      db.users.clear();
-      db.users.bulkAdd(usrs.data);
+      try {
+        let usrs = await axios.get(
+          "https://62b9d16eff109cd1dc9bd9a9.mockapi.io/users"
+        );
+        db.users.clear();
+        db.users.bulkAdd(usrs.data);
+      } catch (error) {
+        console.log(error);
+      }
+
       // users.value = usrs.data;
     });
 
     return {
       name,
       email,
-      users: useObservable(
-        liveQuery(() => db.users.toArray())
-      ),
-      pending : useObservable(
-        liveQuery(()=>db.requests.toArray())
-      ),
+      users: useObservable(liveQuery(() => db.users.toArray())),
+      pending: useObservable(liveQuery(() => db.requests.toArray())),
       addUser,
       deleteUser,
       handleSync,
@@ -122,8 +132,8 @@ export default {
 </script>
 
 <style scoped>
-.temp-btn{
-  margin : 0 5px;
+.temp-btn {
+  margin: 0 5px;
 }
 .emoji-btn {
   font-size: 20px;
